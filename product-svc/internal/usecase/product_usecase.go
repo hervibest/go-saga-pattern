@@ -200,3 +200,46 @@ func (uc *productUseCase) PublicSearch(ctx context.Context, request *model.Publi
 
 	return converter.ProductsWithTotalToResponses(products), metadata, nil
 }
+
+//TODO Transaction Wrapper
+
+func (uc *productUseCase) CheckProductsAndReserve(ctx context.Context, request *model.CheckProductsQuantity) error {
+	productIDs := make([]uuid.UUID, 0, len(request.Products))
+	for _, productReq := range request.Products {
+		productIDs = append(productIDs, productReq.ProductID)
+	}
+
+	products, err := uc.productRepository.FindManyByIDs(ctx, uc.databaseAdapter, productIDs, true)
+	if err != nil {
+		return helper.WrapInternalServerError(uc.log, "failed to find products by user id", err)
+	}
+
+	if len(productIDs) != len(products) {
+		return helper.NewUseCaseError(errorcode.ErrInvalidArgument, "product not found")
+	}
+
+	productTransactions := make([]*entity.ProductTransaction, 0, len(products))
+	for idx, product := range products {
+		productReq := request.Products[idx]
+		if productReq.Quantity > product.Quantity {
+			return helper.NewUseCaseError(errorcode.ErrInvalidArgument, "product not found")
+		}
+
+		if productReq.Price != product.Price {
+			return helper.NewUseCaseError(errorcode.ErrInvalidArgument, "product not found")
+		}
+
+		if err := uc.productRepository.ReduceQuantity(ctx, uc.databaseAdapter, productReq.ProductID, productReq.Quantity); err != nil {
+
+		}
+
+		//TODO finalize
+		productTransaction := &entity.ProductTransaction{
+			TransactionID: request.TransactionID,
+			ProductID:     product.Id,
+		}
+
+		productTransactions = append(productTransactions, productTransaction)
+	}
+
+}

@@ -49,3 +49,14 @@ type ProductResponse struct {
 	UpdatedAt   string  `json:"updated_at,omitempty"`
 	DeletedAt   string  `json:"deleted_at,omitempty"`
 }
+
+type CheckProductQuantity struct {
+	ProductID uuid.UUID
+	Quantity  int
+	Price     float64
+}
+
+type CheckProductsQuantity struct {
+	TransactionID uuid.UUID
+	Products      []*CheckProductQuantity
+}

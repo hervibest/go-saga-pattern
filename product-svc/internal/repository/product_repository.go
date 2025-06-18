@@ -19,10 +19,14 @@ type ProductRepository interface {
 	FindByID(ctx context.Context, db store.Querier, id uuid.UUID) (*entity.Product, error)
 	FindByIDAndUserID(ctx context.Context, db store.Querier, id uuid.UUID, userID uuid.UUID) (*entity.Product, error)
 	FindBySlug(ctx context.Context, db store.Querier, slug string) (*entity.Product, error)
+	FindManyByIDs(ctx context.Context, db store.Querier, ids []uuid.UUID, forUpdate bool) ([]*entity.Product, error)
 	Insert(ctx context.Context, db store.Querier, product *entity.Product) (*entity.Product, error)
 	OwnerFindAll(ctx context.Context, db store.Querier, userID uuid.UUID, page int, limit int) ([]*entity.ProductWithTotal, *web.PageMetadata, error)
 	PublicFindAll(ctx context.Context, db store.Querier, page int, limit int) ([]*entity.ProductWithTotal, *web.PageMetadata, error)
-	UpdateById(ctx context.Context, db store.Querier, product *entity.Product) (*entity.Product, error)
+	UpdateByID(ctx context.Context, db store.Querier, product *entity.Product) (*entity.Product, error)
+	// UpdateQuantityByID(ctx context.Context, db store.Querier, id uuid.UUID, quantity int) (*entity.Product, error)
+	ReduceQuantity(ctx context.Context, db store.Querier, id uuid.UUID, quantity int) error
+	RestoreQuantity(ctx context.Context, db store.Querier, id uuid.UUID, quantity int) error
 }
 
 type productRepository struct{}
@@ -79,6 +83,20 @@ func (r *productRepository) FindByID(ctx context.Context, db store.Querier, id u
 	return product, nil
 }
 
+func (r *productRepository) FindManyByIDs(ctx context.Context, db store.Querier, ids []uuid.UUID, forUpdate bool) ([]*entity.Product, error) {
+	var products []*entity.Product
+	query := "SELECT * FROM products WHERE id IN = $1"
+	if forUpdate {
+		query += " FOR UPDATE"
+	}
+
+	if err := pgxscan.Select(ctx, db, &products, query, ids); err != nil {
+		return nil, err
+	}
+
+	return products, nil
+}
+
 func (r *productRepository) FindBySlug(ctx context.Context, db store.Querier, slug string) (*entity.Product, error) {
 	query := `
 	SELECT
@@ -127,7 +145,7 @@ func (r *productRepository) ExistByNameOrSlugExceptHerself(ctx context.Context, 
 	return count > 0, nil
 }
 
-func (r *productRepository) UpdateById(ctx context.Context, db store.Querier, product *entity.Product) (*entity.Product, error) {
+func (r *productRepository) UpdateByID(ctx context.Context, db store.Querier, product *entity.Product) (*entity.Product, error) {
 	query := `
 	UPDATE
 		products
@@ -236,4 +254,30 @@ func (r *productRepository) OwnerFindAll(ctx context.Context, db store.Querier, 
 
 	pageMetadata := helper.CalculatePagination(int64(totalItems), page, limit)
 	return products, pageMetadata, nil
+}
+
+func (r *productRepository) ReduceQuantity(ctx context.Context, db store.Querier, id uuid.UUID, quantity int) error {
+	query := "UPDATE products SET quantity = quantity - $1 WHERE id = $2"
+	row, err := db.Exec(ctx, query, quantity, id)
+	if err != nil {
+		return err
+	}
+	if row.RowsAffected() == 0 {
+		return errors.New("invalid product id")
+	}
+
+	return nil
+}
+
+func (r *productRepository) RestoreQuantity(ctx context.Context, db store.Querier, id uuid.UUID, quantity int) error {
+	query := "UPDATE products SET quantity = quantity + $1 WHERE id = $2"
+	row, err := db.Exec(ctx, query, quantity, id)
+	if err != nil {
+		return err
+	}
+	if row.RowsAffected() == 0 {
+		return errors.New("invalid product id")
+	}
+
+	return nil
 }
