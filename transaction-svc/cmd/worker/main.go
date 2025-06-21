@@ -50,7 +50,6 @@ func worker(ctx context.Context) error {
 
 	transactionUC := usecase.NewTransactionUseCase(transactionRepo, transactionTransactionRepo, databaseStore, nil, messagingAdapter,
 		paymentAdapter, cacheAdapter, transactionTask, timeParserHelper, customValidator, logger)
-
 	cancelationUC := usecase.NewCancelationUseCase(databaseStore, transactionRepo, messagingAdapter, logger)
 
 	transactionConsumer := consumer.NewWebhookConsumer(transactionUC, js, logger)
@@ -69,7 +68,7 @@ func worker(ctx context.Context) error {
 		},
 		asynq.Config{
 			// Specify how many concurrent workers to use
-			Concurrency: 10,
+			Concurrency: 2,
 			// Optionally specify multiple queues with different priority.
 			Queues: map[string]int{
 				"critical": 6,

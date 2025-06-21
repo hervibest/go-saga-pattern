@@ -74,7 +74,7 @@ func webServer(ctx context.Context) error {
 
 	go consul.StartHealthCheckLoop(ctx, registry, GRPCserviceID, serverConfig.UserSvcName+"-grpc", logger)
 
-	userRepo := repository.NewUserRepository(logger)
+	userRepo := repository.NewUserRepository()
 
 	userUC := usecase.NewUserUseCase(db, userRepo, jwtAdapter, cacheAdapter, customValidator, logger)
 

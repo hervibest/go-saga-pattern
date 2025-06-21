@@ -3,10 +3,12 @@ package repository
 import (
 	"context"
 	"fmt"
+	"go-saga-pattern/commoner/constant/enum"
 	"go-saga-pattern/transaction-svc/internal/entity"
 	"go-saga-pattern/transaction-svc/internal/repository/store"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/lib/pq"
 )
 
 type TransactionRepository interface {
@@ -14,6 +16,7 @@ type TransactionRepository interface {
 	FindByID(ctx context.Context, db store.Querier, id string, forUpdate bool) (*entity.Transaction, error)
 	FindByUserID(ctx context.Context, db store.Querier, userID string) ([]*entity.Transaction, error)
 	FindDetailByID(ctx context.Context, db store.Querier, userID string) ([]*entity.TransactionWithDetail, error)
+	FindManyCheckable(ctx context.Context, tx store.Querier) ([]*entity.Transaction, error)
 
 	UpdateCallback(ctx context.Context, db store.Querier, transaction *entity.Transaction) error
 	UpdateToken(ctx context.Context, tx store.Querier, transaction *entity.Transaction) error
@@ -178,6 +181,30 @@ func (r *transactionRepository) UpdateStatus(ctx context.Context, tx store.Queri
 	}
 
 	return nil
+}
+
+func (r *transactionRepository) FindManyCheckable(ctx context.Context, tx store.Querier) ([]*entity.Transaction, error) {
+	transactions := make([]*entity.Transaction, 0)
+	statuses := []enum.TrxInternalStatus{
+		enum.TrxInternalStatusExpired,
+		enum.TrxInternalStatusPending,
+		enum.TrxInternalStatusTokenReady,
+	}
+
+	query := `
+	SELECT
+		id, user_id, transaction_status, created_at
+	FROM
+		transactions
+	WHERE
+		internal_status = ANY($1)
+	`
+
+	if err := pgxscan.Select(ctx, tx, &transactions, query, pq.Array(statuses)); err != nil {
+		return nil, err
+	}
+
+	return transactions, nil
 }
 
 // func (r *transactionRepository) DeleteByID(ctx context.Context, db store.Querier, id string) error {

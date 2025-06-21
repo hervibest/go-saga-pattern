@@ -41,7 +41,7 @@ func (th *transactionTaskHandler) HandleExpire(ctx context.Context, t *asynq.Tas
 	}
 
 	if err := th.cancelationUseCase.ExpirePendingTransaction(ctx, p.TransactionID.String()); err != nil {
-		th.log.Error("failed to expire pending transaction", zap.Error(err), zap.String("transaction_id", p.TransactionID.String()))
+		th.log.Warn("failed to expire pending transaction", zap.Error(err), zap.String("transaction_id", p.TransactionID.String()))
 		return fmt.Errorf("failed to expire pending transaction: %w", err)
 	}
 
@@ -59,7 +59,7 @@ func (th *transactionTaskHandler) HandleFinalExpire(ctx context.Context, t *asyn
 	}
 
 	if err := th.cancelationUseCase.ExpireFinalTransaction(ctx, p.TransactionID.String()); err != nil {
-		th.log.Error("failed to expire final transaction", zap.Error(err), zap.String("transaction_id", p.TransactionID.String()))
+		th.log.Warn("failed to expire final transaction", zap.Error(err), zap.String("transaction_id", p.TransactionID.String()))
 		return fmt.Errorf("failed to expire final transaction: %w", err)
 	}
 

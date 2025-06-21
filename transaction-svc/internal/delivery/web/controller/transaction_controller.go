@@ -6,7 +6,7 @@ import (
 	"go-saga-pattern/commoner/web"
 	"go-saga-pattern/transaction-svc/internal/delivery/web/middleware"
 	"go-saga-pattern/transaction-svc/internal/model"
-	"go-saga-pattern/transaction-svc/internal/usecase"
+	"go-saga-pattern/transaction-svc/internal/usecase/contract"
 
 	"net/http"
 
@@ -19,11 +19,11 @@ type TransactionController interface {
 }
 
 type transactionController struct {
-	transactionUseCase usecase.TransactionUseCase
+	transactionUseCase contract.TransactionUseCase
 	logs               logs.Log
 }
 
-func NewTransactionController(transactionUseCase usecase.TransactionUseCase, logs logs.Log) TransactionController {
+func NewTransactionController(transactionUseCase contract.TransactionUseCase, logs logs.Log) TransactionController {
 	return &transactionController{transactionUseCase: transactionUseCase, logs: logs}
 }
 

@@ -42,7 +42,6 @@ func (c *productController) OwnerCreate(ctx *fiber.Ctx) error {
 	request.UserID = uuid.MustParse(user.ID)
 	response, err := c.productUseCase.OwnerCreate(ctx.UserContext(), request)
 	if err != nil {
-
 		return helper.ErrUseCaseResponseJSON(ctx, "Create product error : ", err, c.logs)
 	}
 
@@ -72,7 +71,6 @@ func (c *productController) OwnerDelete(ctx *fiber.Ctx) error {
 
 	err = c.productUseCase.OwnerDelete(ctx.UserContext(), request)
 	if err != nil {
-
 		return helper.ErrUseCaseResponseJSON(ctx, "Delete product error : ", err, c.logs)
 	}
 
@@ -92,7 +90,6 @@ func (c *productController) OwnerSearch(ctx *fiber.Ctx) error {
 
 	products, pageMetadata, err := c.productUseCase.OwnerSearch(ctx.UserContext(), request)
 	if err != nil {
-
 		return helper.ErrUseCaseResponseJSON(ctx, "Search products error : ", err, c.logs)
 	}
 
@@ -129,7 +126,6 @@ func (c *productController) OwnerUpdate(ctx *fiber.Ctx) error {
 
 	product, err := c.productUseCase.OwnerUpdate(ctx.UserContext(), request)
 	if err != nil {
-
 		return helper.ErrUseCaseResponseJSON(ctx, "Update product error : ", err, c.logs)
 	}
 
@@ -147,7 +143,6 @@ func (c *productController) PublicSearch(ctx *fiber.Ctx) error {
 
 	products, pageMetadata, err := c.productUseCase.PublicSearch(ctx.UserContext(), request)
 	if err != nil {
-
 		return helper.ErrUseCaseResponseJSON(ctx, "Search products error : ", err, c.logs)
 	}
 

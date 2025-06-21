@@ -2,6 +2,9 @@ package task
 
 import (
 	"encoding/json"
+	"go-saga-pattern/commoner/utils"
+	"log"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,7 +12,9 @@ import (
 )
 
 type transactionTask struct {
-	asynqClient *asynq.Client
+	transactionTTL      time.Duration
+	transactionFinalTTL time.Duration
+	asynqClient         *asynq.Client
 }
 
 // A list of task types.
@@ -44,7 +49,25 @@ type TransactionTask interface {
 }
 
 func NewTransactionTask(asynqClient *asynq.Client) TransactionTask {
-	return &transactionTask{asynqClient: asynqClient}
+	ttlStr := utils.GetEnv("TRANSACTION_EXPIRATION_TTL")
+	ttlInt, err := strconv.Atoi(ttlStr)
+	if err != nil || ttlInt <= 0 {
+		log.Printf("Invalid TRANSACTION_EXPIRATION_TTL value: %q, defaulting to 60 seconds", ttlStr)
+		ttlInt = 60
+	}
+
+	ttlFinalStr := utils.GetEnv("TRANSACTION_EXPIRATION_FINAL_TTL")
+	ttlFinalInt, err := strconv.Atoi(ttlFinalStr)
+	if err != nil || ttlInt <= 0 {
+		log.Printf("Invalid TRANSACTION_EXPIRATION_TTL value: %q, defaulting to 120 seconds", ttlStr)
+		ttlInt = 120
+	}
+
+	return &transactionTask{
+		transactionTTL:      time.Duration(ttlInt) * time.Second,
+		transactionFinalTTL: time.Duration(ttlFinalInt) * time.Second,
+		asynqClient:         asynqClient,
+	}
 }
 
 func (t *transactionTask) EnqueueTransactionExpire(transactionID uuid.UUID) error {
@@ -52,7 +75,7 @@ func (t *transactionTask) EnqueueTransactionExpire(transactionID uuid.UUID) erro
 	if err != nil {
 		return err
 	}
-	_, err = t.asynqClient.Enqueue(task, asynq.ProcessIn(10*time.Second))
+	_, err = t.asynqClient.Enqueue(task, asynq.ProcessIn(t.transactionTTL))
 	if err != nil {
 		return err
 	}
@@ -64,7 +87,7 @@ func (t *transactionTask) EnqueueTransactionExpireFinal(transactionID uuid.UUID)
 	if err != nil {
 		return err
 	}
-	_, err = t.asynqClient.Enqueue(task, asynq.ProcessIn(30*time.Second))
+	_, err = t.asynqClient.Enqueue(task, asynq.ProcessIn(t.transactionFinalTTL))
 	if err != nil {
 		return err
 	}

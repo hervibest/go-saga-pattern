@@ -22,6 +22,7 @@ import (
 	"go-saga-pattern/transaction-svc/internal/model/event"
 	"go-saga-pattern/transaction-svc/internal/repository"
 	"go-saga-pattern/transaction-svc/internal/repository/store"
+	"go-saga-pattern/transaction-svc/internal/usecase/contract"
 	"strings"
 	"time"
 
@@ -32,11 +33,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type TransactionUseCase interface {
-	CreateTransaction(ctx context.Context, request *model.CreateTransactionRequest) (*model.CreateTransactionResponse, error)
-	CheckAndUpdateTransaction(ctx context.Context, request *model.CheckAndUpdateTransactionRequest) error
-	// GetTransactionDetail(ctx context.Context, request *model.GetTransactionRequest) (*model.TransactionResponse, error)
-}
 type transactionUseCase struct {
 	transactionRepo       repository.TransactionRepository
 	transactionDetailRepo repository.TransactionDetailRepository
@@ -54,7 +50,7 @@ type transactionUseCase struct {
 func NewTransactionUseCase(transactionRepo repository.TransactionRepository, transactionDetailRepo repository.TransactionDetailRepository,
 	databaseStore store.DatabaseStore, productAdapter adapter.ProductAdapter, messagingAdapter adapter.MessagingAdapter, paymentAdapter adapter.PaymentAdapter,
 	cacheAdapter adapter.CacheAdapter, expireTask task.TransactionTask, timeParserHelper helper.TimeParserHelper, validator helper.CustomValidator,
-	log logs.Log) TransactionUseCase {
+	log logs.Log) contract.TransactionUseCase {
 	return &transactionUseCase{
 		transactionRepo:       transactionRepo,
 		transactionDetailRepo: transactionDetailRepo,
@@ -329,7 +325,7 @@ func (uc *transactionUseCase) CheckAndUpdateTransaction(ctx context.Context, req
 
 		requestIsValid, hashedSignature := uc.CheckPaymentSignature(request.SignatureKey, transaction.ID.String(), request.StatusCode, request.GrossAmount)
 		if !requestIsValid {
-			uc.log.Error("Invalid signature key", zap.String("transaction_id", transaction.ID.String()), zap.String("hashed_signature", hashedSignature))
+			uc.log.Warn("Invalid signature key", zap.String("transaction_id", transaction.ID.String()), zap.String("hashed_signature", hashedSignature))
 			return helper.NewUseCaseError(errorcode.ErrForbidden, "Invalid signature key")
 		}
 

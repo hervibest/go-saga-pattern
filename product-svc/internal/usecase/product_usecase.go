@@ -109,7 +109,7 @@ func (uc *productUseCase) GetBySlug(ctx context.Context, slug string) (*model.Pr
 	return converter.ProductToResponse(product), nil
 }
 
-//ISSUE product doesnt populated
+// ISSUE product doesnt populated
 func (uc *productUseCase) OwnerUpdate(ctx context.Context, request *model.UpdateProductRequest) (*model.ProductResponse, error) {
 	if validatonErrs := uc.validator.ValidateUseCase(request); validatonErrs != nil {
 		return nil, validatonErrs
@@ -170,7 +170,7 @@ func (uc *productUseCase) OwnerDelete(ctx context.Context, request *model.Delete
 	}
 
 	if err := uc.productRepository.DeleteByIDAndUserID(ctx, uc.databaseStore, product.ID, product.UserID); err != nil {
-		if strings.Contains(err.Error(), "product not found or already deleted") {
+		if strings.Contains(err.Error(), message.InternalNoRowsAffected) {
 			return helper.NewUseCaseError(errorcode.ErrResourceNotFound, message.ProductNotFoundOrAlreadyDeleted)
 		}
 		return helper.WrapInternalServerError(uc.log, "failed to delete product", err)
@@ -184,7 +184,7 @@ func (uc *productUseCase) OwnerDelete(ctx context.Context, request *model.Delete
 func (uc *productUseCase) OwnerSearch(ctx context.Context, request *model.OwnerSearchProductsRequest) ([]*model.ProductResponse, *web.PageMetadata, error) {
 	products, metadata, err := uc.productRepository.OwnerFindAll(ctx, uc.databaseStore, request)
 	if err != nil {
-		return nil, nil, helper.WrapInternalServerError(uc.log, "failed to find products by user id", err)
+		return nil, nil, helper.WrapInternalServerError(uc.log, "failed to find owner products by user id", err)
 	}
 
 	if products == nil {
@@ -197,7 +197,7 @@ func (uc *productUseCase) OwnerSearch(ctx context.Context, request *model.OwnerS
 func (uc *productUseCase) PublicSearch(ctx context.Context, request *model.PublicSearchProductsRequest) ([]*model.ProductResponse, *web.PageMetadata, error) {
 	products, metadata, err := uc.productRepository.PublicFindAll(ctx, uc.databaseStore, request.Limit, request.Page)
 	if err != nil {
-		return nil, nil, helper.WrapInternalServerError(uc.log, "failed to find products by user id", err)
+		return nil, nil, helper.WrapInternalServerError(uc.log, "failed to find public products", err)
 	}
 
 	if products == nil {

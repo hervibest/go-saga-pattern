@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"go-saga-pattern/commoner/constant/enum"
+	"go-saga-pattern/commoner/constant/message"
 	"go-saga-pattern/commoner/helper"
 	"go-saga-pattern/commoner/web"
 	"go-saga-pattern/product-svc/internal/entity"
@@ -149,7 +150,11 @@ func (r *productRepository) ExistByNameOrSlugExceptHerself(ctx context.Context, 
 	FROM
 		products
 	WHERE
-		(name = $1 OR slug = $2) AND deleted_at IS NULL AND id != $3
+		(name = $1 OR slug = $2) 
+	AND 
+		deleted_at IS NULL 
+	AND 
+		id != $3
 	`
 	var count int64
 	if err := db.QueryRow(ctx, query, name, slug, id).Scan(&count); err != nil {
@@ -174,7 +179,9 @@ func (r *productRepository) UpdateByID(ctx context.Context, db store.Querier, pr
 	RETURNING
 		created_at, updated_at
 	`
+
 	log.Default().Printf("Update Product Query: %s with Product: %+v", query, product)
+
 	if err := pgxscan.Get(ctx, db, product, query, product.Name, product.Slug, product.Description,
 		product.Price, product.Quantity, product.ID, product.UserID); err != nil {
 		return nil, err
@@ -189,7 +196,11 @@ func (r *productRepository) DeleteByIDAndUserID(ctx context.Context, db store.Qu
 	SET
 		deleted_at = NOW()
 	WHERE
-		id = $1 AND user_id = $2 AND deleted_at IS NULL
+		id = $1 
+	AND 
+		user_id = $2 
+	AND 
+		deleted_at IS NULL
 	`
 	row, err := db.Exec(ctx, query, id, userID)
 	if err != nil {
@@ -199,11 +210,11 @@ func (r *productRepository) DeleteByIDAndUserID(ctx context.Context, db store.Qu
 	log.Printf("Delete Product Query: %s with ID: %s and UserID: %s", query, id, userID)
 
 	if row.RowsAffected() == 0 {
-		return errors.New("product not found or already deleted")
+		return errors.New(message.InternalNoRowsAffected)
 	}
 
 	if row.RowsAffected() > 1 {
-		return errors.New("multiple products deleted, which is unexpected")
+		return errors.New(message.MultipleRowsAffected)
 	}
 
 	return nil
@@ -277,8 +288,13 @@ func (r *productRepository) ReduceQuantity(ctx context.Context, db store.Querier
 	if err != nil {
 		return err
 	}
+
 	if row.RowsAffected() == 0 {
-		return errors.New("invalid product id")
+		return errors.New(message.InternalNoRowsAffected)
+	}
+
+	if row.RowsAffected() > 1 {
+		return errors.New(message.MultipleRowsAffected)
 	}
 
 	return nil
@@ -290,8 +306,13 @@ func (r *productRepository) RestoreQuantity(ctx context.Context, db store.Querie
 	if err != nil {
 		return err
 	}
+
 	if row.RowsAffected() == 0 {
-		return errors.New("invalid product id")
+		return errors.New(message.InternalNoRowsAffected)
+	}
+
+	if row.RowsAffected() > 1 {
+		return errors.New(message.MultipleRowsAffected)
 	}
 
 	return nil

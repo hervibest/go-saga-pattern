@@ -141,7 +141,7 @@ func (uc *userUseCase) CurrentUser(ctx context.Context, email string) (*model.Us
 	admin, err := uc.userRepository.FindByEmail(ctx, uc.db, email)
 	if err != nil {
 		if strings.Contains(err.Error(), pgx.ErrNoRows.Error()) {
-			return nil, helper.NewUseCaseError(errorcode.ErrUserNotFound, "Invalid token")
+			return nil, helper.NewUseCaseError(errorcode.ErrUserNotFound, message.ClientInvalidAccessToken)
 		}
 		return nil, helper.WrapInternalServerError(uc.logs, "failed to find by email not google", err)
 	}
@@ -152,12 +152,12 @@ func (uc *userUseCase) CurrentUser(ctx context.Context, email string) (*model.Us
 func (uc *userUseCase) VerifyUser(ctx context.Context, token string) (*model.AuthResponse, error) {
 	accessTokenDetail, err := uc.jwtAdapter.VerifyUserAccessToken(token)
 	if err != nil {
-		return nil, helper.NewUseCaseError(errorcode.ErrUnauthorized, "Invalid access token")
+		return nil, helper.NewUseCaseError(errorcode.ErrUnauthorized, message.ClientInvalidAccessToken)
 	}
 
 	userId, err := uc.cacheAdapter.Get(ctx, token)
 	if userId != "" {
-		return nil, helper.NewUseCaseError(errorcode.ErrUnauthorized, "You have already signed out")
+		return nil, helper.NewUseCaseError(errorcode.ErrUnauthorized, message.ClientUnauthenticated)
 	}
 
 	cachedUserStr, err := uc.cacheAdapter.Get(ctx, accessTokenDetail.UserID)
@@ -171,8 +171,7 @@ func (uc *userUseCase) VerifyUser(ctx context.Context, token string) (*model.Aut
 		user, err := uc.userRepository.FindByID(ctx, uc.db, accessTokenDetail.UserID)
 		if err != nil {
 			if strings.Contains(err.Error(), pgx.ErrNoRows.Error()) {
-				uc.logs.Debug("Err no rows for user id in user repo find by id (access token user id)")
-				return nil, helper.NewUseCaseError(errorcode.ErrUnauthorized, "invalid access token")
+				return nil, helper.NewUseCaseError(errorcode.ErrUnauthorized, message.ClientInvalidAccessToken)
 			}
 			return nil, helper.WrapInternalServerError(uc.logs, "failed to find user by id", err)
 		}

@@ -8,7 +8,7 @@ import (
 	"go-saga-pattern/commoner/logs"
 	"go-saga-pattern/transaction-svc/internal/model"
 	"go-saga-pattern/transaction-svc/internal/model/event"
-	"go-saga-pattern/transaction-svc/internal/usecase"
+	"go-saga-pattern/transaction-svc/internal/usecase/contract"
 	"time"
 
 	"github.com/bytedance/sonic"
@@ -18,7 +18,7 @@ import (
 )
 
 type WebhookConsumer struct {
-	transactionUseCase usecase.TransactionUseCase
+	transactionUseCase contract.TransactionUseCase
 	js                 nats.JetStreamContext
 	subject            string
 	consumerName       string
@@ -26,7 +26,7 @@ type WebhookConsumer struct {
 	logs               logs.Log
 }
 
-func NewWebhookConsumer(transactionUseCase usecase.TransactionUseCase, js nats.JetStreamContext, logs logs.Log) *WebhookConsumer {
+func NewWebhookConsumer(transactionUseCase contract.TransactionUseCase, js nats.JetStreamContext, logs logs.Log) *WebhookConsumer {
 	return &WebhookConsumer{
 		transactionUseCase: transactionUseCase,
 		js:                 js,
@@ -84,14 +84,14 @@ func (s *WebhookConsumer) Start(ctx context.Context) error {
 					}
 
 					if err := s.transactionUseCase.CheckAndUpdateTransaction(ctx, request); err != nil {
-						s.logs.Error("failed to process transaction: %v", zap.Error(err), zap.String("OrderID", event.OrderID))
+						s.logs.Warn("failed to process transaction: %v", zap.Error(err), zap.String("OrderID", event.OrderID))
 						appErr, ok := err.(*helper.AppError)
 						if ok && appErr.Code == errorcode.ErrInternal {
 							s.logs.Error("internal server error, retrying message", zap.String("OrderID", event.OrderID))
 							_ = msg.Nak()
 							continue
 						}
-						s.logs.Error("failed to process transaction, acknowledging message from usecase error", zap.String("OrderID", event.OrderID), zap.Error(err))
+						s.logs.Warn("failed to process transaction, acknowledging message from usecase error", zap.String("OrderID", event.OrderID), zap.Error(err))
 					}
 
 					if err := msg.Ack(); err != nil {

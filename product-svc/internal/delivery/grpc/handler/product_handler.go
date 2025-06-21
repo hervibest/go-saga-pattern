@@ -63,15 +63,15 @@ func (h *ProductHandler) CheckProductAndReserve(ctx context.Context, pbReq *prod
 		return nil, helper.ErrGRPC(err)
 	}
 
-	productResponsePb := make([]*productpb.Product, len(response.Products))
-	for i, product := range response.Products {
-		productResponsePb[i] = &productpb.Product{
+	productResponsePb := make([]*productpb.Product, 0, len(response.Products))
+	for _, product := range response.Products {
+		productResponsePb = append(productResponsePb, &productpb.Product{
 			Id:          product.ID,
 			Name:        product.Name,
 			Description: product.Description,
 			Price:       float32(product.Price),
 			Quantity:    int32(product.Quantity),
-		}
+		})
 	}
 
 	pbResponse := &productpb.CheckProductQuantityResponse{

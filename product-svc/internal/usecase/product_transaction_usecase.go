@@ -15,6 +15,7 @@ import (
 	"go-saga-pattern/product-svc/internal/repository"
 	"go-saga-pattern/product-svc/internal/repository/store"
 	"log"
+	"strings"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -53,7 +54,6 @@ func NewProductTransactionUseCase(productRepository repository.ProductRepository
 // TODO : Cannot deleted product when product transaction exists and status != canceled or expired
 func (uc *productTransactionUseCase) CancelProductTransactions(ctx context.Context, request *model.CancelProductTransactionsRequest) error {
 	if err := uc.updateAndRestoreProductTransactions(ctx, request.TransactionID, enum.ProductTransactionStatusCanceled); err != nil {
-		uc.log.Error("failed to cancel product transactions", zap.Error(err))
 		return err
 	}
 
@@ -63,7 +63,6 @@ func (uc *productTransactionUseCase) CancelProductTransactions(ctx context.Conte
 // TODO : Cannot deleted product when product transaction exists and status != canceled or expired
 func (uc *productTransactionUseCase) ExpireProductTransactions(ctx context.Context, request *model.ExpireProductTransactionsRequest) error {
 	if err := uc.updateAndRestoreProductTransactions(ctx, request.TransactionID, enum.ProductTransactionStatusExpired); err != nil {
-		uc.log.Error("failed to expire product transactions", zap.Error(err))
 		return err
 	}
 
@@ -102,6 +101,9 @@ func (uc *productTransactionUseCase) updateAndRestoreProductTransactions(ctx con
 		for _, productTransaction := range productTransactions {
 			if err := uc.productRepository.RestoreQuantity(ctx, uc.databaseStore, productTransaction.ProductID,
 				productTransaction.Quantity); err != nil {
+				if strings.Contains(err.Error(), message.InternalNoRowsAffected) {
+					return helper.NewUseCaseError(errorcode.ErrResourceNotFound, message.ProductNotFoundOrAlreadyDeleted)
+				}
 				return err
 			}
 		}
@@ -121,7 +123,7 @@ func (uc *productTransactionUseCase) updateAndRestoreProductTransactions(ctx con
 
 func (uc *productTransactionUseCase) CheckProductsAndReserve(ctx context.Context, request *model.CheckProductsQuantityRequest) (*model.CheckProductsQuantityRequestResponse, error) {
 	// Log entry point
-	log.Printf("[CheckProductsAndReserve] Starting processing for request: %+v", request)
+	uc.log.Info("[CheckProductsAndReserve] Starting to check products and reserve quantities", zap.String("TransactionID", request.TransactionID.String()))
 
 	if request == nil {
 		log.Println("[CheckProductsAndReserve] Error: nil request received")
@@ -194,6 +196,9 @@ func (uc *productTransactionUseCase) CheckProductsAndReserve(ctx context.Context
 			}
 
 			if err := uc.productRepository.ReduceQuantity(ctx, tx, productReq.ProductID, productReq.Quantity); err != nil {
+				if strings.Contains(err.Error(), message.InternalNoRowsAffected) {
+					return helper.NewUseCaseError(errorcode.ErrResourceNotFound, message.ProductNotFoundOrAlreadyDeleted)
+				}
 				return helper.WrapInternalServerError(uc.log, "failed to reduce product quantity", err)
 			}
 
