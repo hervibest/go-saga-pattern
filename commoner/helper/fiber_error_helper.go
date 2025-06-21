@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/oklog/ulid/v2"
 )
 
 type BodyParseErrorResponse struct {
@@ -44,7 +43,6 @@ func ErrBodyParserResponseJSON(ctx *fiber.Ctx, err error) error {
 	return ctx.Status(http.StatusBadRequest).JSON(BodyParseErrorResponse{
 		Success: false,
 		Message: "Invalid request. Please check the submitted data.",
-		Errors:  err.Error(),
 	})
 }
 
@@ -57,9 +55,13 @@ func ErrValidationResponseJSON(ctx *fiber.Ctx, validatonErrs *UseCaseValError) e
 }
 
 func ErrUseCaseResponseJSON(ctx *fiber.Ctx, msg string, err error, logs logs.Log) error {
+	if validatonErrs, ok := err.(*UseCaseValError); ok {
+		return ErrValidationResponseJSON(ctx, validatonErrs)
+	}
+
 	if appErr, ok := err.(*AppError); ok {
 		logs.Info(fmt.Sprintf("UseCase error in controller : %s [%s]: %v", msg, appErr.Code, appErr.Err))
-		if appErr.Err != nil {
+		if appErr.Err != nil && appErr.Err.Error() == "" && appErr.Code == errorcode.ErrInternal {
 			logs.Error(fmt.Sprintf("Internal error in controller : %s [%s]: %v", msg, appErr.Code, appErr.Err.Error()))
 		} else {
 			logs.Info(fmt.Sprintf("Client error in controller : %s [%s]: %v", msg, appErr.Code, appErr.Message))
@@ -72,17 +74,4 @@ func ErrUseCaseResponseJSON(ctx *fiber.Ctx, msg string, err error, logs logs.Log
 	}
 
 	return fiber.NewError(fiber.StatusInternalServerError, "Something went wrong. Please try again later")
-}
-
-func MultipleULIDSliceParser(ulidSlice []string) error {
-	invalidIds := make([]string, 0)
-	for _, id := range ulidSlice {
-		if _, err := ulid.Parse(id); err != nil {
-			invalidIds = append(invalidIds, id)
-		}
-	}
-	if len(invalidIds) != 0 {
-		return NewUseCaseError(errorcode.ErrInvalidArgument, fmt.Sprintf("Invalid ids : %s", invalidIds))
-	}
-	return nil
 }

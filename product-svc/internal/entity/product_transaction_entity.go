@@ -9,7 +9,7 @@ import (
 )
 
 type ProductTransaction struct {
-	TransactionID uuid.UUID                         `db:"id"`
+	TransactionID uuid.UUID                         `db:"transaction_id"`
 	ProductID     uuid.UUID                         `db:"product_id"`
 	Status        enum.ProductTransactionStatusEnum `db:"status"`
 	Quantity      int                               `db:"quantity"`
@@ -19,4 +19,6 @@ type ProductTransaction struct {
 	CommittedAt   sql.NullTime                      `db:"committed_at"`
 	ExpiredAt     sql.NullTime                      `db:"expired_at"`
 	SettledAt     sql.NullTime                      `db:"settled_at"`
+	CreatedAt     sql.NullTime                      `db:"created_at"`
+	UpdatedAt     sql.NullTime                      `db:"updated_at"`
 }

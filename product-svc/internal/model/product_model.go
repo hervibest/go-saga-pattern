@@ -11,13 +11,13 @@ type CreateProductRequest struct {
 }
 
 type GetProductRequest struct {
-	Id string `json:"id" validate:"required,uuid"`
+	ID string `json:"id" validate:"required,uuid"`
 }
 
 type OwnerSearchProductsRequest struct {
-	UserID uuid.UUID `json:"user_id" validate:"required,uuid"`
-	Page   int       `json:"page" validate:"required,min=1"`
-	Limit  int       `json:"limit" validate:"required,min=1,max=100"`
+	UserID uuid.UUID `validate:"required,uuid"`
+	Page   int       `validate:"required,min=1"`
+	Limit  int       `validate:"required,min=1,max=100"`
 }
 
 type PublicSearchProductsRequest struct {
@@ -26,7 +26,7 @@ type PublicSearchProductsRequest struct {
 }
 
 type UpdateProductRequest struct {
-	Id          uuid.UUID `json:"id" validate:"required,uuid"`
+	ID          uuid.UUID `json:"id" validate:"required,uuid"`
 	UserID      uuid.UUID `json:"user_id" validate:"required,uuid"`
 	Name        string    `json:"name" validate:"required,omitempty"`
 	Description *string   `json:"description" validate:"omitempty"`
@@ -35,12 +35,12 @@ type UpdateProductRequest struct {
 }
 
 type DeleteProductRequest struct {
-	Id     uuid.UUID `json:"id" validate:"required,uuid"`
+	ID     uuid.UUID `json:"id" validate:"required,uuid"`
 	UserID uuid.UUID `json:"user_id" validate:"required,uuid"`
 }
 
 type ProductResponse struct {
-	Id          string  `json:"id"`
+	ID          string  `json:"id"`
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
@@ -56,7 +56,28 @@ type CheckProductQuantity struct {
 	Price     float64
 }
 
-type CheckProductsQuantity struct {
+type CheckProductsQuantityRequest struct {
 	TransactionID uuid.UUID
 	Products      []*CheckProductQuantity
+}
+
+type CancelProductTransactionsRequest struct {
+	TransactionID uuid.UUID
+}
+
+type ExpireProductTransactionsRequest struct {
+	TransactionID uuid.UUID
+}
+
+type CommitProductTransactionsRequest struct {
+	TransactionID uuid.UUID
+}
+
+type SettleProductTransactionRequest struct {
+	TransactionID uuid.UUID
+}
+
+type CheckProductsQuantityRequestResponse struct {
+	TransactionID uuid.UUID          `json:"transaction_id"`
+	Products      []*ProductResponse `json:"products"`
 }

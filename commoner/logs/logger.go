@@ -26,7 +26,22 @@ type Log interface {
 	WithOptions(opts ...zap.Option) *zap.Logger
 }
 
-func NewLogger() (Log, error) {
-	logger, err := zap.NewProduction()
-	return logger, err
+func NewLogger() (*zap.Logger, error) {
+	config := zap.NewProductionConfig()
+
+	// Menonaktifkan stack trace untuk level Error
+	config.DisableStacktrace = true
+
+	// Atau jika Anda ingin lebih spesifik:
+	// config.EncoderConfig.StacktraceKey = "" // Menghapus stack trace sepenuhnya
+
+	logger, err := config.Build(
+		// Opsi tambahan untuk menghilangkan caller (opsional)
+		zap.AddCallerSkip(1),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return logger, nil
 }

@@ -3,25 +3,29 @@ package repository
 import (
 	"context"
 	"errors"
+	"go-saga-pattern/commoner/constant/enum"
 	"go-saga-pattern/commoner/helper"
-	"go-saga-pattern/commoner/store"
 	"go-saga-pattern/commoner/web"
 	"go-saga-pattern/product-svc/internal/entity"
+	"go-saga-pattern/product-svc/internal/model"
+	"go-saga-pattern/product-svc/internal/repository/store"
+	"log"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type ProductRepository interface {
-	DeleteByIDAndUserID(ctx context.Context, db store.Querier, id uuid.UUID, userId uuid.UUID) error
+	DeleteByIDAndUserID(ctx context.Context, db store.Querier, id uuid.UUID, userID uuid.UUID) error
 	ExistByNameOrSlugExceptHerself(ctx context.Context, db store.Querier, name string, slug string, id uuid.UUID) (bool, error)
 	ExistsByNameOrSlug(ctx context.Context, db store.Querier, name string, slug string) (bool, error)
 	FindByID(ctx context.Context, db store.Querier, id uuid.UUID) (*entity.Product, error)
 	FindByIDAndUserID(ctx context.Context, db store.Querier, id uuid.UUID, userID uuid.UUID) (*entity.Product, error)
 	FindBySlug(ctx context.Context, db store.Querier, slug string) (*entity.Product, error)
-	FindManyByIDs(ctx context.Context, db store.Querier, ids []uuid.UUID, forUpdate bool) ([]*entity.Product, error)
+	FindManyByIDs(ctx context.Context, db store.Querier, ids []uuid.UUID, lockType enum.LockTypeEnum) ([]*entity.Product, error)
 	Insert(ctx context.Context, db store.Querier, product *entity.Product) (*entity.Product, error)
-	OwnerFindAll(ctx context.Context, db store.Querier, userID uuid.UUID, page int, limit int) ([]*entity.ProductWithTotal, *web.PageMetadata, error)
+	OwnerFindAll(ctx context.Context, db store.Querier, request *model.OwnerSearchProductsRequest) ([]*entity.ProductWithTotal, *web.PageMetadata, error)
 	PublicFindAll(ctx context.Context, db store.Querier, page int, limit int) ([]*entity.ProductWithTotal, *web.PageMetadata, error)
 	UpdateByID(ctx context.Context, db store.Querier, product *entity.Product) (*entity.Product, error)
 	// UpdateQuantityByID(ctx context.Context, db store.Querier, id uuid.UUID, quantity int) (*entity.Product, error)
@@ -54,7 +58,7 @@ func (r *productRepository) Insert(ctx context.Context, db store.Querier, produc
 func (r *productRepository) FindByIDAndUserID(ctx context.Context, db store.Querier, id, userID uuid.UUID) (*entity.Product, error) {
 	query := `
 	SELECT
-		id, name, slug, description, price, quantity, created_at, updated_at, deleted_at
+		id, user_id, name, slug, description, price, quantity, created_at, updated_at, deleted_at
 	FROM
 		products
 	WHERE
@@ -83,14 +87,23 @@ func (r *productRepository) FindByID(ctx context.Context, db store.Querier, id u
 	return product, nil
 }
 
-func (r *productRepository) FindManyByIDs(ctx context.Context, db store.Querier, ids []uuid.UUID, forUpdate bool) ([]*entity.Product, error) {
+func (r *productRepository) FindManyByIDs(ctx context.Context, db store.Querier, ids []uuid.UUID, lockType enum.LockTypeEnum) ([]*entity.Product, error) {
 	var products []*entity.Product
-	query := "SELECT * FROM products WHERE id IN = $1"
-	if forUpdate {
+	query := `
+	SELECT 
+		id, name, slug, description, price, quantity, created_at, updated_at, deleted_at 
+	FROM 
+		products 
+	WHERE 
+		id = ANY($1) AND deleted_at IS NULL
+	`
+	if lockType == enum.LockTypeUpdateEnum {
 		query += " FOR UPDATE"
+	} else if lockType == enum.LockTypeShareEnum {
+		query += " FOR SHARE"
 	}
 
-	if err := pgxscan.Select(ctx, db, &products, query, ids); err != nil {
+	if err := pgxscan.Select(ctx, db, &products, query, pq.Array(ids)); err != nil {
 		return nil, err
 	}
 
@@ -161,14 +174,15 @@ func (r *productRepository) UpdateByID(ctx context.Context, db store.Querier, pr
 	RETURNING
 		created_at, updated_at
 	`
+	log.Default().Printf("Update Product Query: %s with Product: %+v", query, product)
 	if err := pgxscan.Get(ctx, db, product, query, product.Name, product.Slug, product.Description,
-		product.Price, product.Quantity, product.Id, product.UserID); err != nil {
+		product.Price, product.Quantity, product.ID, product.UserID); err != nil {
 		return nil, err
 	}
 	return product, nil
 }
 
-func (r *productRepository) DeleteByIDAndUserID(ctx context.Context, db store.Querier, id, userId uuid.UUID) error {
+func (r *productRepository) DeleteByIDAndUserID(ctx context.Context, db store.Querier, id, userID uuid.UUID) error {
 	query := `
 	UPDATE
 		products
@@ -177,10 +191,12 @@ func (r *productRepository) DeleteByIDAndUserID(ctx context.Context, db store.Qu
 	WHERE
 		id = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
-	row, err := db.Exec(ctx, query, id, userId)
+	row, err := db.Exec(ctx, query, id, userID)
 	if err != nil {
 		return err
 	}
+
+	log.Printf("Delete Product Query: %s with ID: %s and UserID: %s", query, id, userID)
 
 	if row.RowsAffected() == 0 {
 		return errors.New("product not found or already deleted")
@@ -225,8 +241,7 @@ func (r *productRepository) PublicFindAll(ctx context.Context, db store.Querier,
 	return products, pageMetadata, nil
 }
 
-func (r *productRepository) OwnerFindAll(ctx context.Context, db store.Querier, userID uuid.UUID, page,
-	limit int) ([]*entity.ProductWithTotal, *web.PageMetadata, error) {
+func (r *productRepository) OwnerFindAll(ctx context.Context, db store.Querier, request *model.OwnerSearchProductsRequest) ([]*entity.ProductWithTotal, *web.PageMetadata, error) {
 	var totalItems int
 	query := `
 	SELECT
@@ -242,7 +257,7 @@ func (r *productRepository) OwnerFindAll(ctx context.Context, db store.Querier, 
 	`
 
 	var products []*entity.ProductWithTotal
-	if err := pgxscan.Select(ctx, db, &products, query, userID, limit, (page-1)*limit); err != nil {
+	if err := pgxscan.Select(ctx, db, &products, query, request.UserID, request.Limit, (request.Page-1)*request.Limit); err != nil {
 		return nil, &web.PageMetadata{}, err
 	}
 
@@ -252,7 +267,7 @@ func (r *productRepository) OwnerFindAll(ctx context.Context, db store.Querier, 
 
 	totalItems = products[0].TotalData
 
-	pageMetadata := helper.CalculatePagination(int64(totalItems), page, limit)
+	pageMetadata := helper.CalculatePagination(int64(totalItems), request.Page, request.Limit)
 	return products, pageMetadata, nil
 }
 

@@ -9,9 +9,11 @@ CREATE TABLE IF NOT EXISTS product_transactions (
 	total_price NUMERIC(19,2) NOT NULL CHECK(total_price > 0),
 	reserved_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
 	canceled_at TIMESTAMPTZ,
-	comitted_at TIMESTAMPTZ,
+	committed_at TIMESTAMPTZ,
 	expired_at TIMESTAMPTZ,
 	settled_at TIMESTAMPTZ,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
 	PRIMARY KEY(transaction_id, product_id)
 );COMMENT ON COLUMN product_transactions.status IS 'RESERVED, CANCELED, COMMITED, EXPIRED, SETTLED';
 

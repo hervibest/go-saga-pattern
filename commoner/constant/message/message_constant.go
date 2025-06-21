@@ -10,10 +10,6 @@ const (
 	ClientUnauthenticated        = "Unauthenticated, please try login again"
 	ClientPermissionDenied       = "Permission denied for accessing this resource"
 
-	ProductNotFound                 = "Product not found for the given id/uuid"
-	ProductNotFoundOrAlreadyDeleted = "Product not found or already deleted"
-	ProductIsExistsByNameOrSlug     = "Product with the same name or slug already exists"
-
 	InternalGracefulError = "Something wrong happened. Please try again"
 
 	InternalNoRowsAffected = "no rows affected"

@@ -4,11 +4,13 @@ import (
 	"go-saga-pattern/commoner/helper/nullable"
 	"go-saga-pattern/product-svc/internal/entity"
 	"go-saga-pattern/product-svc/internal/model"
+
+	"github.com/google/uuid"
 )
 
 func ProductToResponse(product *entity.Product) *model.ProductResponse {
 	return &model.ProductResponse{
-		Id:          product.Id.String(),
+		ID:          product.ID.String(),
 		Name:        product.Name,
 		Description: nullable.SQLtoString(product.Description),
 		Price:       product.Price,
@@ -28,7 +30,7 @@ func ProductsWithTotalToResponses(productsWithTotal []*entity.ProductWithTotal) 
 	responses := make([]*model.ProductResponse, len(productsWithTotal))
 	for i, productWithTotal := range productsWithTotal {
 		product := &entity.Product{
-			Id:          productWithTotal.Id,
+			ID:          productWithTotal.ID,
 			UserID:      productWithTotal.UserID,
 			Name:        productWithTotal.Name,
 			Slug:        productWithTotal.Slug,
@@ -40,4 +42,16 @@ func ProductsWithTotalToResponses(productsWithTotal []*entity.ProductWithTotal) 
 		responses[i] = ProductToResponse(product)
 	}
 	return responses
+}
+
+func ProductsToCheckQuantityResponse(transactionID uuid.UUID, products []*entity.Product) *model.CheckProductsQuantityRequestResponse {
+	responses := make([]*model.ProductResponse, len(products))
+	for i, product := range products {
+		responses[i] = &model.ProductResponse{
+			ID:       product.ID.String(),
+			Quantity: product.Quantity,
+			Price:    product.Price,
+		}
+	}
+	return &model.CheckProductsQuantityRequestResponse{TransactionID: transactionID, Products: responses}
 }

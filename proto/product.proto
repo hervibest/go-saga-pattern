@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "/productpb";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+
+service ProductService{
+    rpc CheckProductAndReserve(CheckProductAndReserveRequest) returns (CheckProductQuantityResponse);
+}
+
+message CheckProductAndReserveRequest {
+    string transaction_id = 1;
+    repeated CheckProductQuantity products = 2;
+}
+
+message CheckProductQuantity {
+    string product_id = 1;
+    int32 quantity = 2;
+    float price = 3;
+}
+
+message CheckProductQuantityResponse{
+  int64 status = 1; 
+  string error = 2;
+  repeated Product products = 3;
+}
+
+message Product {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    float price = 4;
+    int32 quantity = 5;
+    google.protobuf.Timestamp created_at = 6;
+    google.protobuf.Timestamp updated_at = 7;
+}

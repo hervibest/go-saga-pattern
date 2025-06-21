@@ -1,6 +1,9 @@
 package nullable
 
-import "database/sql"
+import (
+	"database/sql"
+	"time"
+)
 
 // ToSQLFloat64 mengonversi pointer float64 ke sql.NullFloat64
 func ToSQLFloat64(input *float64) sql.NullFloat64 {
@@ -46,6 +49,16 @@ func ToSQLString(input *string) sql.NullString {
 	}
 }
 
+func ToSQLTime(input time.Time) sql.NullTime {
+	if input.IsZero() {
+		return sql.NullTime{}
+	}
+	return sql.NullTime{
+		Time:  input,
+		Valid: true,
+	}
+}
+
 func SQLStringToPtr(ns sql.NullString) *string {
 	if ns.Valid {
 		return &ns.String
@@ -72,4 +85,11 @@ func SQLtoFloat64(ns sql.NullFloat64) float64 {
 		return ns.Float64
 	}
 	return 0
+}
+
+func SQLtoTime(ns sql.NullTime) string {
+	if ns.Valid {
+		return ns.Time.Format("2006-01-02 15:04:05")
+	}
+	return ""
 }

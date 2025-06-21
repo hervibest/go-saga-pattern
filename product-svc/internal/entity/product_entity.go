@@ -8,7 +8,7 @@ import (
 )
 
 type Product struct {
-	Id          uuid.UUID      `db:"id"`
+	ID          uuid.UUID      `db:"id"`
 	UserID      uuid.UUID      `db:"user_id"`
 	Name        string         `db:"name"`
 	Slug        string         `db:"slug"`
@@ -21,7 +21,7 @@ type Product struct {
 }
 
 type ProductWithTotal struct {
-	Id          uuid.UUID      `db:"id"`
+	ID          uuid.UUID      `db:"id"`
 	UserID      uuid.UUID      `db:"user_id"`
 	Name        string         `db:"name"`
 	Slug        string         `db:"slug"`
