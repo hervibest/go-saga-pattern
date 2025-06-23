@@ -5,6 +5,8 @@ import (
 	"go-saga-pattern/transaction-svc/internal/model"
 	"log"
 	"time"
+
+	"github.com/midtrans/midtrans-go/coreapi"
 )
 
 func TransactionToResponse(transaction *entity.Transaction, redirectUrl string) *model.CreateTransactionResponse {
@@ -49,4 +51,18 @@ func TransactionDetailToResponses(transactionDetails []*entity.TransactionDetail
 	}
 
 	return transactionDetailResponses
+}
+
+func SchedulerReqToCheckAndUpdate(schedulerReq *coreapi.TransactionStatusResponse, body []byte) *model.CheckAndUpdateTransactionRequest {
+	return &model.CheckAndUpdateTransactionRequest{
+		MidtransTransactionStatus: schedulerReq.TransactionStatus,
+		StatusCode:                schedulerReq.StatusCode,
+		SignatureKey:              schedulerReq.SignatureKey,
+		SettlementTime:            schedulerReq.SettlementTime,
+		// ReferenceID:               schedulerReq.ReferenceID,
+		OrderID: schedulerReq.OrderID,
+		// Metadata:                  schedulerReq.Metadata,
+		GrossAmount: schedulerReq.GrossAmount,
+		Body:        body,
+	}
 }

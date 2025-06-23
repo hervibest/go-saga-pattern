@@ -40,6 +40,7 @@ func webServer(ctx context.Context) error {
 	defer db.Close()
 	js := config.NewJetStream(logger)
 	redis := config.NewRedisClient(logger)
+
 	asyncClient := config.NewAsyncConfig()
 	midtransClient := config.NewMidtransClient()
 

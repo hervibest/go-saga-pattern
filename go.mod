@@ -7,6 +7,7 @@ toolchain go1.23.10
 require (
 	github.com/bytedance/sonic v1.13.3
 	github.com/georgysavva/scany/v2 v2.1.4
+	github.com/go-co-op/gocron/v2 v2.16.2
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/gofiber/fiber/v2 v2.52.8
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -14,6 +15,7 @@ require (
 	github.com/gosimple/slug v1.15.0
 	github.com/hashicorp/consul/api v1.32.1
 	github.com/hashicorp/vault/api v1.20.0
+	github.com/hibiken/asynq v0.25.1
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
@@ -54,10 +56,10 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-7 // indirect
 	github.com/hashicorp/serf v0.10.1 // indirect
-	github.com/hibiken/asynq v0.25.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect

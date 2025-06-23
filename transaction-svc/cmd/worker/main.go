@@ -10,6 +10,7 @@ import (
 	"go-saga-pattern/transaction-svc/internal/adapter"
 	"go-saga-pattern/transaction-svc/internal/config"
 	consumer "go-saga-pattern/transaction-svc/internal/delivery/consumer/webhook"
+	"go-saga-pattern/transaction-svc/internal/delivery/scheduler"
 	taskhandler "go-saga-pattern/transaction-svc/internal/delivery/task"
 	"go-saga-pattern/transaction-svc/internal/gateway/task"
 	"go-saga-pattern/transaction-svc/internal/repository"
@@ -31,6 +32,7 @@ func worker(ctx context.Context) error {
 	redis := config.NewRedisClient(logger)
 	asyncClient := config.NewAsyncConfig()
 	midtransClient := config.NewMidtransClient()
+	goCronConfig := config.NewGocron(logger)
 
 	config.DeleteWebhookStream(js, logger)
 	config.InitWebhookStream(js, logger)
@@ -51,6 +53,7 @@ func worker(ctx context.Context) error {
 	transactionUC := usecase.NewTransactionUseCase(transactionRepo, transactionTransactionRepo, databaseStore, nil, messagingAdapter,
 		paymentAdapter, cacheAdapter, transactionTask, timeParserHelper, customValidator, logger)
 	cancelationUC := usecase.NewCancelationUseCase(databaseStore, transactionRepo, messagingAdapter, logger)
+	schedulerUC := usecase.NewSchedulerUseCase(databaseStore, transactionRepo, transactionUC, cancelationUC, paymentAdapter, logger)
 
 	transactionConsumer := consumer.NewWebhookConsumer(transactionUC, js, logger)
 	go transactionConsumer.Start(ctx)
@@ -78,6 +81,9 @@ func worker(ctx context.Context) error {
 			// See the godoc for other configuration options
 		},
 	)
+
+	schedulerRunner := scheduler.NewSchedulerRunner(goCronConfig, schedulerUC, logger)
+	go schedulerRunner.Start()
 
 	expireTaskHandler := taskhandler.NewTransactionTaskHandler(cancelationUC, logger)
 
