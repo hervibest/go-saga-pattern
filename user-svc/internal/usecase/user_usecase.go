@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	errorcode "go-saga-pattern/commoner/constant/errcode"
@@ -125,7 +126,7 @@ func (uc *userUseCase) LoginUser(ctx context.Context, request *model.LoginUserRe
 }
 
 func (uc *userUseCase) saveUserToCache(ctx context.Context, auth *entity.Auth, expiresAt time.Time) error {
-	jsonValue, err := sonic.ConfigFastest.Marshal(auth)
+	jsonValue, err := json.Marshal(auth)
 	if err != nil {
 		return fmt.Errorf("marshal user : %+v", err)
 	}
@@ -138,7 +139,7 @@ func (uc *userUseCase) saveUserToCache(ctx context.Context, auth *entity.Auth, e
 }
 
 func (uc *userUseCase) CurrentUser(ctx context.Context, email string) (*model.UserResponse, error) {
-	admin, err := uc.userRepository.FindByEmail(ctx, uc.db, email)
+	user, err := uc.userRepository.FindByEmail(ctx, uc.db, email)
 	if err != nil {
 		if strings.Contains(err.Error(), pgx.ErrNoRows.Error()) {
 			return nil, helper.NewUseCaseError(errorcode.ErrUserNotFound, message.ClientInvalidAccessToken)
@@ -146,7 +147,7 @@ func (uc *userUseCase) CurrentUser(ctx context.Context, email string) (*model.Us
 		return nil, helper.WrapInternalServerError(uc.logs, "failed to find by email not google", err)
 	}
 
-	return converter.UserToResponse(admin), nil
+	return converter.UserToResponse(user), nil
 }
 
 func (uc *userUseCase) VerifyUser(ctx context.Context, token string) (*model.AuthResponse, error) {
@@ -156,6 +157,10 @@ func (uc *userUseCase) VerifyUser(ctx context.Context, token string) (*model.Aut
 	}
 
 	userId, err := uc.cacheAdapter.Get(ctx, token)
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return nil, helper.WrapInternalServerError(uc.logs, "failed to get user id from cache", err)
+	}
+
 	if userId != "" {
 		return nil, helper.NewUseCaseError(errorcode.ErrUnauthorized, message.ClientUnauthenticated)
 	}

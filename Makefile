@@ -42,7 +42,7 @@ generate-proto-user:
 	cd proto && protoc --go_out=. --go-grpc_out=. user.proto
 
 start-user-svc:
-	cd user-svc/cmd/web && go run main.go
+	cd user-svc/cmd/web && go run main.gomockgen -version
 
 start-product-svc:
 	cd product-svc/cmd/web && go run main.go
@@ -55,3 +55,15 @@ start-transaction-worker:
 
 start-listener-svc:
 	cd transaction-svc/cmd/listener && go run main.go
+
+mockgen-user-svc:
+	cd user-svc/internal && \
+	mockgen -source=./repository/store/db.go \
+	        -destination=./mocks/store/mock_db.go \
+	        -package=mockstore
+
+mockgen-log:
+	cd commoner && \
+	mockgen -source=./helper/validate_helper.go \
+	        -destination=./mocks/commoner/helper/mock_validator.go \
+	        -package=mockhelper
