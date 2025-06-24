@@ -7,7 +7,6 @@ import (
 	"go-saga-pattern/commoner/logs"
 	"go-saga-pattern/commoner/utils"
 	"go-saga-pattern/proto/userpb"
-	"log"
 
 	"go.uber.org/zap"
 )
@@ -28,7 +27,7 @@ func NewUserAdapter(ctx context.Context, registry discovery.Registry, logs logs.
 		return nil, err
 	}
 
-	log.Print("successfuly connected to user-svc-grpc")
+	logs.Info("successfuly connected", zap.String("service_name", userServiceName))
 	client := userpb.NewUserServiceClient(conn)
 
 	return &userAdapter{

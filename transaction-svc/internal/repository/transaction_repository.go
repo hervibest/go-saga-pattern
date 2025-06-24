@@ -193,7 +193,7 @@ func (r *transactionRepository) FindManyCheckable(ctx context.Context, tx store.
 
 	query := `
 	SELECT
-		id, user_id, transaction_status, created_at
+		id, user_id, transaction_status, checkout_at, payment_at, total_price, internal_status
 	FROM
 		transactions
 	WHERE

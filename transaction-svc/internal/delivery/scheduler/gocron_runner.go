@@ -42,7 +42,7 @@ func NewSchedulerRunner(
 }
 
 func (r *schedulerRunner) Start() {
-	jobDef := gocron.DurationJob(r.checkSchedulerDuration * time.Second)
+	jobDef := gocron.DurationJob(r.checkSchedulerDuration)
 
 	_, err := r.scheduler.NewJob(
 		jobDef,
@@ -50,6 +50,7 @@ func (r *schedulerRunner) Start() {
 			ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
 			defer cancel()
 
+			r.logs.Info("Starting job to check transaction status", zap.String("job", "CheckTransactionStatus"))
 			if err := r.usecase.CheckTransactionStatus(ctx); err != nil {
 				r.logs.Error("Failed to check transaction status", zap.Error(err))
 			}
