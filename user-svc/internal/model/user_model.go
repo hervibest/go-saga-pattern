@@ -7,9 +7,9 @@ import (
 )
 
 type RegisterUserRequest struct {
-	Username  string    `json:"username" validate:"required"`
-	Email     string    `json:"email" validate:"required"`
-	Password  string    `json:"password" validate:"required"`
+	Username  string    `json:"username" validate:"required,min=0,max=255"`
+	Email     string    `json:"email" validate:"required,min=0,max=255,email"`
+	Password  string    `json:"password" validate:"required,min=6"`
 	CreatedBy uuid.UUID `json:"created_by" validate:"required"`
 	UpdatedBy uuid.UUID `json:"updated_by" validate:"required"`
 	RequestID uuid.UUID `json:"request_id" validate:"required"`
@@ -22,8 +22,8 @@ func (r *RegisterUserRequest) SetRequestIDAndIpAddress(requestID uuid.UUID, ipAd
 }
 
 type LoginUserRequest struct {
-	Email    string `json:"email" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Email    string `json:"email" validate:"required,min=0,max=255,email"`
+	Password string `json:"password" validate:"required,min=6"`
 }
 
 type UserResponse struct {

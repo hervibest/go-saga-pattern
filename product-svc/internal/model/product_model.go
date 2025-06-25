@@ -26,12 +26,12 @@ type PublicSearchProductsRequest struct {
 }
 
 type UpdateProductRequest struct {
-	ID          uuid.UUID `json:"id" validate:"required,uuid"`
+	ID          uuid.UUID `json:"-" validate:"required,uuid"`
 	UserID      uuid.UUID `json:"user_id" validate:"required,uuid"`
-	Name        string    `json:"name" validate:"required,omitempty"`
-	Description *string   `json:"description" validate:"omitempty"`
-	Price       float64   `json:"price" validate:"required,omitempty,gt=0"`
-	Quantity    int       `json:"quantity" validate:"required,omitempty,gt=0"`
+	Name        string    `json:"name" validate:"required"`
+	Description *string   `json:"description"`
+	Price       float64   `json:"price" validate:"gt=0"`
+	Quantity    int       `json:"quantity" validate:"gte=0"`
 }
 
 type DeleteProductRequest struct {

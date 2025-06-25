@@ -53,7 +53,7 @@ func webServer(ctx context.Context) error {
 	GRPCserviceID := discovery.GenerateServiceID(serverConfig.UserSvcName + "-grpc")
 	grpcPortInt, _ := strconv.Atoi(serverConfig.UserGRPCPort)
 
-	err = registry.RegisterService(ctx, serverConfig.UserSvcName+"-grpc", GRPCserviceID, serverConfig.UserGRPCInternalAddr, grpcPortInt, []string{"grpc"})
+	err = registry.RegisterService(ctx, serverConfig.UserSvcName+"-grpc", GRPCserviceID, serverConfig.UserGRPCAddr, grpcPortInt, []string{"grpc"})
 	if err != nil {
 		logger.Error("Failed to register user service to consul", zap.Error(err))
 	}
