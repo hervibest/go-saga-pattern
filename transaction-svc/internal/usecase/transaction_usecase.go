@@ -318,7 +318,7 @@ func (uc *transactionUseCase) CheckAndUpdateTransaction(ctx context.Context, req
 		transaction, err = uc.transactionRepo.FindByID(ctx, tx, request.OrderID, true)
 		if err != nil {
 			if strings.Contains(err.Error(), pgx.ErrNoRows.Error()) {
-				return helper.NewUseCaseError(errorcode.ErrResourceNotFound, message.ProductNotFound)
+				return helper.NewUseCaseError(errorcode.ErrResourceNotFound, message.TransactionNotFound)
 			}
 			return helper.WrapInternalServerError(uc.log, "failed to update transaction callback in database", err)
 		}
@@ -329,7 +329,7 @@ func (uc *transactionUseCase) CheckAndUpdateTransaction(ctx context.Context, req
 			return helper.NewUseCaseError(errorcode.ErrForbidden, "Invalid signature key")
 		}
 
-		//Only check if internal transaction status is "PENDING", "TOKEN_READY", "STATUS_EXPIRED"
+		//Only check if internal transaction status is "PENDING", "TOKEN_READY", "EXPIRED"
 		if transaction.InternalStatus != enum.TrxInternalStatusPending &&
 			transaction.InternalStatus != enum.TrxInternalStatusTokenReady &&
 			transaction.InternalStatus != enum.TrxInternalStatusExpired {
@@ -344,6 +344,7 @@ func (uc *transactionUseCase) CheckAndUpdateTransaction(ctx context.Context, req
 			if request.MidtransTransactionStatus == string(enum.PaymentStatusSettlement) {
 				settlementTime, err := uc.timeParserHelper.TimeParseInDefaultLocation(request.SettlementTime)
 				if err != nil {
+					uc.log.Error("failed to parse settlement time from external webhook request", zap.String("transaction_id", request.OrderID), zap.Error(err))
 					return err
 				}
 
@@ -372,8 +373,10 @@ func (uc *transactionUseCase) CheckAndUpdateTransaction(ctx context.Context, req
 			case string(enum.PaymentStatusCapture), string(enum.PaymentStatusSettlement):
 				settlementTime, err := uc.timeParserHelper.TimeParseInDefaultLocation(request.SettlementTime)
 				if err != nil {
+					uc.log.Error("failed to parse settlement time from external webhook request", zap.String("transaction_id", request.OrderID), zap.Error(err))
 					return err
 				}
+
 				settlementTimePtr = &settlementTime
 				transactionStatus = enum.TransactionStatusSuccess
 				transactionInternalStatus = enum.TrxInternalStatusSettled
@@ -421,7 +424,8 @@ func (uc *transactionUseCase) CheckAndUpdateTransaction(ctx context.Context, req
 		return helper.WrapInternalServerError(uc.log, "failed to update transaction callback in database", err)
 	}
 
-	if transactionStatus == enum.TransactionStatusCancelled {
+	switch transactionStatus {
+	case enum.TransactionStatusCancelled:
 		event := &event.TransactionEvent{
 			TransactionID: transaction.ID.String(),
 			Status:        enum.TransactionEventCancelled,
@@ -430,7 +434,7 @@ func (uc *transactionUseCase) CheckAndUpdateTransaction(ctx context.Context, req
 		if err := uc.messagingAdapter.Publish(ctx, "transaction.canceled", event); err != nil {
 			return helper.WrapInternalServerError(uc.log, "failed to publish transaction canceled event", err)
 		}
-	} else if transactionStatus == enum.TransactionStatusExpired || transactionStatus == enum.TransactionStatusFailed {
+	case enum.TransactionStatusExpired, enum.TransactionStatusFailed:
 		event := &event.TransactionEvent{
 			TransactionID: transaction.ID.String(),
 			Status:        enum.TransactionEventExpired,

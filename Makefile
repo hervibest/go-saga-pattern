@@ -38,11 +38,11 @@ transaction-migrate-down-to-zero :
 generate-proto-product:
 	cd proto && protoc --go_out=. --go-grpc_out=. product.proto
 
-generate-proto-user:
+generate-proto-user:d
 	cd proto && protoc --go_out=. --go-grpc_out=. user.proto
 
 start-user-svc:
-	cd user-svc/cmd/web && go run main.gomockgen -version
+	cd user-svc/cmd/web && go run main.go
 
 start-product-svc:
 	cd product-svc/cmd/web && go run main.go
