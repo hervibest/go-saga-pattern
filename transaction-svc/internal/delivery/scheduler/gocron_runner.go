@@ -33,6 +33,7 @@ func NewSchedulerRunner(
 	if err != nil || schedulerInt <= 0 {
 		schedulerInt = 60
 	}
+
 	return &schedulerRunner{
 		scheduler:              s,
 		usecase:                usecase,
@@ -52,7 +53,7 @@ func (r *schedulerRunner) Start() {
 
 			r.logs.Info("Starting job to check transaction status", zap.String("job", "CheckTransactionStatus"))
 			if err := r.usecase.CheckTransactionStatus(ctx); err != nil {
-				r.logs.Error("Failed to check transaction status", zap.Error(err))
+				r.logs.Warn("Failed to check transaction status", zap.Error(err))
 			}
 		}),
 	)
@@ -60,6 +61,7 @@ func (r *schedulerRunner) Start() {
 		r.logs.Error("Failed to create job", zap.Error(err))
 		return
 	}
+
 	r.logs.Info("Scheduler job created to check transaction status every 100 seconds", zap.String("job", "CheckTransactionStatus"))
 	r.scheduler.Start()
 }

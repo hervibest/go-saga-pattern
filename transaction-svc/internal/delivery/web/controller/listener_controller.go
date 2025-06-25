@@ -33,6 +33,7 @@ func (c *listenerController) NotifyTransaction(ctx *fiber.Ctx) error {
 	if err := ctx.BodyParser(webhookRequest); err != nil {
 		return helper.ErrBodyParserResponseJSON(ctx, err)
 	}
+
 	if _, err := uuid.Parse(webhookRequest.OrderID); err != nil {
 		return fiber.NewError(http.StatusBadRequest, "invalid order id")
 	}

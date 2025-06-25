@@ -166,7 +166,6 @@ func (c *productController) GetByID(ctx *fiber.Ctx) error {
 
 	product, err := c.productUseCase.GetByID(ctx.UserContext(), parsedId)
 	if err != nil {
-
 		return helper.ErrUseCaseResponseJSON(ctx, "Get product by ID error : ", err, c.logs)
 	}
 
