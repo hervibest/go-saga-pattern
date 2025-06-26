@@ -16,6 +16,7 @@ import (
 
 type ProductAdapter interface {
 	CheckProductAndReserve(ctx context.Context, transationID uuid.UUID, request []*model.CheckProductQuantity) ([]*model.ProductResponse, error)
+	OwnerGetProduct(ctx context.Context, userID, productID uuid.UUID) (*model.ProductResponse, error)
 }
 
 type productAdapter struct {
@@ -70,4 +71,25 @@ func (a *productAdapter) CheckProductAndReserve(ctx context.Context, transationI
 	}
 
 	return products, nil
+}
+
+func (a *productAdapter) OwnerGetProduct(ctx context.Context, userID, productID uuid.UUID) (*model.ProductResponse, error) {
+	ownerGetProductRequest := &productpb.OwnerGetProductRequest{
+		ProductId: productID.String(),
+		UserId:    userID.String(),
+	}
+
+	response, err := a.client.OwnerGetProduct(ctx, ownerGetProductRequest)
+	if err != nil {
+		return nil, helper.FromGRPCError(err)
+	}
+
+	return &model.ProductResponse{
+		ID:          response.Product.Id,
+		Quantity:    int(response.Product.Quantity),
+		Price:       float64(response.Product.Price),
+		Name:        response.Product.Name,
+		Description: response.Product.Description,
+	}, nil
+
 }

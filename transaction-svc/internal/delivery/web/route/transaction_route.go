@@ -23,4 +23,7 @@ func NewTransactionRoute(app *fiber.App, transactionController controller.Transa
 func (r *TransactionRoute) RegisterRoutes() {
 	userRoutes := r.app.Group("/api/v1/transaction", r.userMiddleware)
 	userRoutes.Post("/buy", r.transactionController.CreateTransaction)
+	userRoutes.Get("/", r.transactionController.UserSearch)
+	userRoutes.Get("/detail", r.transactionController.UserSearchWithDetail)
+	userRoutes.Get("/owner/detail", r.transactionController.OwnerSearchWithDetail)
 }

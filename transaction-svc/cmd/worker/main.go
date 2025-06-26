@@ -33,6 +33,7 @@ func worker(ctx context.Context) error {
 	asyncClient := config.NewAsyncConfig()
 	midtransClient := config.NewMidtransClient()
 	goCronConfig := config.NewGocron(logger)
+	asynqServer := config.NewAsynqServer()
 
 	config.DeleteWebhookStream(js, logger)
 	config.InitWebhookStream(js, logger)
@@ -59,29 +60,6 @@ func worker(ctx context.Context) error {
 	go transactionConsumer.Start(ctx)
 	serverErrors := make(chan error, 1)
 
-	srv := asynq.NewServer(
-		asynq.RedisClientOpt{
-			Addr: "127.0.0.1:6379",
-			// Password:     "",               // jika pakai password
-			// DB:           0,                // optional: default DB
-			// TLSConfig:    &tls.Config{},    // jika pakai Redis TLS (bukan HTTPS ya!)
-			// DialTimeout:  10 * time.Second, // increased timeout
-			// ReadTimeout:  10 * time.Second,
-			// WriteTimeout: 10 * time.Second,
-		},
-		asynq.Config{
-			// Specify how many concurrent workers to use
-			Concurrency: 2,
-			// Optionally specify multiple queues with different priority.
-			Queues: map[string]int{
-				"critical": 6,
-				"default":  3,
-				"low":      1,
-			},
-			// See the godoc for other configuration options
-		},
-	)
-
 	schedulerRunner := scheduler.NewSchedulerRunner(goCronConfig, schedulerUC, logger)
 	go schedulerRunner.Start()
 
@@ -91,7 +69,7 @@ func worker(ctx context.Context) error {
 	mux.HandleFunc(task.TypeTransactionExpire, expireTaskHandler.HandleExpire)
 	mux.HandleFunc(task.TypeTransactionExpireFinal, expireTaskHandler.HandleFinalExpire)
 	go func() {
-		serverErrors <- srv.Run(mux)
+		serverErrors <- asynqServer.Run(mux)
 	}()
 
 	select {

@@ -10,11 +10,17 @@ import "google/protobuf/wrappers.proto";
 
 service ProductService{
     rpc CheckProductAndReserve(CheckProductAndReserveRequest) returns (CheckProductQuantityResponse);
+    rpc OwnerGetProduct(OwnerGetProductRequest) returns (OwnerGetProductResponse);
 }
 
 message CheckProductAndReserveRequest {
     string transaction_id = 1;
     repeated CheckProductQuantity products = 2;
+}
+
+message OwnerGetProductRequest {
+    string product_id = 1;
+    string user_id = 2;
 }
 
 message CheckProductQuantity {
@@ -27,6 +33,12 @@ message CheckProductQuantityResponse{
   int64 status = 1; 
   string error = 2;
   repeated Product products = 3;
+}
+
+message OwnerGetProductResponse{
+  int64 status = 1; 
+  string error = 2;
+  Product product = 3;
 }
 
 message Product {

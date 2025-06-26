@@ -20,6 +20,11 @@ type OwnerSearchProductsRequest struct {
 	Limit  int       `validate:"required,min=1,max=100"`
 }
 
+type OwnerGetProductRequest struct {
+	UserID    uuid.UUID `validate:"required,uuid"`
+	ProductID uuid.UUID `validate:"required,uuid"`
+}
+
 type PublicSearchProductsRequest struct {
 	Page  int `json:"page" validate:"required,min=1"`
 	Limit int `json:"limit" validate:"required,min=1,max=100"`

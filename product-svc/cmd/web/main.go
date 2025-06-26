@@ -104,7 +104,7 @@ func webServer(ctx context.Context) error {
 
 		defer l.Close()
 
-		grpcHandler.NewProductHandler(grpcServer, productTransactionUC)
+		grpcHandler.NewProductHandler(grpcServer, productTransactionUC, productUC)
 
 		if err := grpcServer.Serve(l); err != nil {
 			logger.Error(fmt.Sprintf("Failed to start gRPC server: %v", err))
