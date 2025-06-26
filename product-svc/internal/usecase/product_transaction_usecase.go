@@ -2,8 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"go-saga-pattern/commoner/constant/enum"
 	errorcode "go-saga-pattern/commoner/constant/errcode"
 	"go-saga-pattern/commoner/constant/message"
@@ -14,7 +12,6 @@ import (
 	"go-saga-pattern/product-svc/internal/model/converter"
 	"go-saga-pattern/product-svc/internal/repository"
 	"go-saga-pattern/product-svc/internal/repository/store"
-	"log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -122,51 +119,33 @@ func (uc *productTransactionUseCase) updateAndRestoreProductTransactions(ctx con
 }
 
 func (uc *productTransactionUseCase) CheckProductsAndReserve(ctx context.Context, request *model.CheckProductsQuantityRequest) (*model.CheckProductsQuantityRequestResponse, error) {
-	// Log entry point
 	uc.log.Info("[CheckProductsAndReserve] Starting to check products and reserve quantities", zap.String("TransactionID", request.TransactionID.String()))
 
 	if request == nil {
-		log.Println("[CheckProductsAndReserve] Error: nil request received")
-		return nil, errors.New("nil request")
+		uc.log.Warn("[CheckProductsAndReserve] Received nil request")
+		return nil, helper.NewUseCaseError(errorcode.ErrInvalidArgument, message.InvalidRequestError)
 	}
 
-	// Log products count
-	log.Printf("[CheckProductsAndReserve] Processing %d products", len(request.Products))
+	uc.log.Info("[CheckProductsAndReserve] Number of products in request", zap.Int("ProductCount", len(request.Products)))
 
-	// Initialize data structures
 	productReqMap := make(map[uuid.UUID]*model.CheckProductQuantity)
 	var productIDs []uuid.UUID
-	log.Println("[CheckProductsAndReserve] Initialized empty map and slice")
 
 	for i, productReq := range request.Products {
-		// Log current product being processed
-		log.Printf("[CheckProductsAndReserve] Processing product %d: %+v", i, productReq)
+		uc.log.Info("[CheckProductsAndReserve] Processing product", zap.Int("Index", i), zap.String("ProductID", productReq.ProductID.String()))
 
 		if productReq == nil {
-			log.Printf("[CheckProductsAndReserve] Warning: nil product at position %d, skipping", i)
+			uc.log.Warn("[CheckProductsAndReserve] Received nil product request at position", zap.Int("Index", i))
 			continue
-		}
-
-		// Validate UUID
-		if productReq.ProductID == uuid.Nil {
-			errMsg := fmt.Sprintf("[CheckProductsAndReserve] Error: invalid product ID at position %d", i)
-			log.Println(errMsg)
-			return nil, fmt.Errorf("invalid product ID at position %d", i)
 		}
 
 		productReqMap[productReq.ProductID] = productReq
 		productIDs = append(productIDs, productReq.ProductID)
 
-		// Log successful processing
-		log.Printf("[CheckProductsAndReserve] Successfully processed product %s at position %d",
-			productReq.ProductID.String(), i)
+		uc.log.Info("[CheckProductsAndReserve] Successfully processed product")
 	}
 
-	// Log summary before continuing
-	log.Printf("[CheckProductsAndReserve] Processed %d valid products out of %d",
-		len(productReqMap), len(request.Products))
-	log.Printf("[CheckProductsAndReserve] Product IDs collected: %v", productIDs)
-
+	uc.log.Info("[CheckProductsAndReserve] All products processed successfully", zap.Int("TotalProducts", len(productIDs)))
 	var products []*entity.Product
 
 	if err := store.BeginTransaction(ctx, uc.log, uc.databaseStore, func(tx store.Transaction) error {
