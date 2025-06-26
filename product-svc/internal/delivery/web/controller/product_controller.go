@@ -133,7 +133,6 @@ func (c *productController) OwnerUpdate(ctx *fiber.Ctx) error {
 		Success: true,
 		Data:    product,
 	})
-
 }
 
 func (c *productController) PublicSearch(ctx *fiber.Ctx) error {
@@ -151,7 +150,6 @@ func (c *productController) PublicSearch(ctx *fiber.Ctx) error {
 		Data:         products,
 		PageMetadata: pageMetadata,
 	})
-
 }
 
 // TODO implement user id
@@ -176,7 +174,6 @@ func (c *productController) GetByID(ctx *fiber.Ctx) error {
 		Success: true,
 		Data:    product,
 	})
-
 }
 
 func (c *productController) GetBySlug(ctx *fiber.Ctx) error {
@@ -195,5 +192,4 @@ func (c *productController) GetBySlug(ctx *fiber.Ctx) error {
 		Success: true,
 		Data:    product,
 	})
-
 }

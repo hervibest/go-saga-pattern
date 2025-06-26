@@ -14,6 +14,7 @@ import (
 	"go-saga-pattern/commoner/helper"
 	"go-saga-pattern/commoner/helper/nullable"
 	"go-saga-pattern/commoner/logs"
+	"go-saga-pattern/commoner/web"
 	"go-saga-pattern/transaction-svc/internal/adapter"
 	"go-saga-pattern/transaction-svc/internal/entity"
 	"go-saga-pattern/transaction-svc/internal/gateway/task"
@@ -155,7 +156,7 @@ func (uc *transactionUseCase) CreateTransaction(ctx context.Context, request *mo
 
 	token, redirectUrl, err := uc.getPaymentToken(ctx, transaction)
 	if err != nil {
-		return converter.TransactionToResponse(transaction, ""), nil
+		return converter.TransactionToCreateResponse(transaction, ""), nil
 	}
 
 	if err := uc.updateTransactionToken(ctx, token, transaction.ID); err != nil {
@@ -166,7 +167,7 @@ func (uc *transactionUseCase) CreateTransaction(ctx context.Context, request *mo
 	transaction.SnapToken = nullable.ToSQLString(&token)
 
 	uc.log.Info("transaction created successfully", zap.Any("transaction", transaction))
-	return converter.TransactionToResponse(transaction, redirectUrl), nil
+	return converter.TransactionToCreateResponse(transaction, redirectUrl), nil
 }
 
 func (uc *transactionUseCase) updateTransactionToken(ctx context.Context, token string, transactionID uuid.UUID) error {
@@ -464,4 +465,47 @@ func (uc *transactionUseCase) CheckAndUpdateTransaction(ctx context.Context, req
 	}
 
 	return nil
+}
+
+func (uc *transactionUseCase) UserSearch(ctx context.Context, request *model.UserSearchTransactionRequest) ([]*model.TransactionResponse, *web.PageMetadata, error) {
+	products, metadata, err := uc.transactionRepo.FindManyByUserID(ctx, uc.databaseStore, request)
+	if err != nil {
+		return nil, nil, helper.WrapInternalServerError(uc.log, "failed to find public products", err)
+	}
+
+	if products == nil {
+		return nil, metadata, nil
+	}
+
+	return converter.TransactionsWithTotalToResponses(products), metadata, nil
+}
+
+func (uc *transactionUseCase) UserSearchWithDetail(ctx context.Context, request *model.UserSearchTransactionRequest) ([]*model.TransactionResponse, *web.PageMetadata, error) {
+	transactions, metadata, err := uc.transactionRepo.FindManyWithDetailByUserID(ctx, uc.databaseStore, request)
+	if err != nil {
+		return nil, nil, helper.WrapInternalServerError(uc.log, "failed to find public products", err)
+	}
+
+	if transactions == nil {
+		return nil, metadata, nil
+	}
+
+	return converter.TransactionWithDetailAndTotalToResponse(transactions, false), metadata, nil
+}
+
+func (uc *transactionUseCase) OwnerSearchWithDetail(ctx context.Context, request *model.OwnerSearchTransactionRequest) ([]*model.TransactionResponse, *web.PageMetadata, error) {
+	if _, err := uc.productAdapter.OwnerGetProduct(ctx, request.UserID, request.ProductID); err != nil {
+		return nil, nil, err
+	}
+
+	transactions, metadata, err := uc.transactionRepo.FindManyWithDetailByProductID(ctx, uc.databaseStore, request)
+	if err != nil {
+		return nil, nil, helper.WrapInternalServerError(uc.log, "failed to find public products", err)
+	}
+
+	if transactions == nil {
+		return nil, metadata, nil
+	}
+
+	return converter.TransactionWithDetailAndTotalToResponse(transactions, true), metadata, nil
 }

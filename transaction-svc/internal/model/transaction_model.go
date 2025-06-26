@@ -17,6 +17,19 @@ type GetTransactionRequest struct {
 	TransacitonID uuid.UUID `json:"transaction_id" validate:"required,uuid"`
 }
 
+type UserSearchTransactionRequest struct {
+	UserID uuid.UUID `json:"user_id" validate:"required,uuid"`
+	Page   int       `validate:"required,min=1"`
+	Limit  int       `validate:"required,min=1,max=100"`
+}
+
+type OwnerSearchTransactionRequest struct {
+	UserID    uuid.UUID `json:"user_id" validate:"required,uuid"`
+	ProductID uuid.UUID `json:"product_id" validate:"required,uuid"`
+	Page      int       `validate:"required,min=1"`
+	Limit     int       `validate:"required,min=1,max=100"`
+}
+
 type TransactionProduct struct {
 	ProductID uuid.UUID `json:"product_id" validate:"required,uuid"`
 	Price     float64   `json:"price" validate:"required,gt=0"`
@@ -32,12 +45,12 @@ type CreateTransactionResponse struct {
 type TransactionResponse struct {
 	ID                 string                       `json:"id"`
 	UserID             string                       `json:"user_id"`
-	TotalPrice         float64                      `json:"total_price"`
+	TotalPrice         float64                      `json:"total_price,omitempty"`
 	TransactionStatus  enum.TransactionStatus       `json:"transaction_status"`
 	CheckoutAt         string                       `json:"checkout_at,omitempty"`
 	PaymentAt          string                       `json:"payment_at,omitempty"`
 	UpdatedAt          string                       `json:"update_at,omitempty"`
-	TransactionDetails []*TransactionDetailResponse `json:"transaction_details"`
+	TransactionDetails []*TransactionDetailResponse `json:"transaction_details,omitempty"`
 }
 
 type TransactionDetailResponse struct {

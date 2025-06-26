@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"go-saga-pattern/commoner/constant/enum"
+	"go-saga-pattern/commoner/helper"
+	"go-saga-pattern/commoner/web"
 	"go-saga-pattern/transaction-svc/internal/entity"
+	"go-saga-pattern/transaction-svc/internal/model"
 	"go-saga-pattern/transaction-svc/internal/repository/store"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -17,7 +20,9 @@ type TransactionRepository interface {
 	FindByUserID(ctx context.Context, db store.Querier, userID string) ([]*entity.Transaction, error)
 	FindDetailByID(ctx context.Context, db store.Querier, userID string) ([]*entity.TransactionWithDetail, error)
 	FindManyCheckable(ctx context.Context, tx store.Querier) ([]*entity.Transaction, error)
-
+	FindManyByUserID(ctx context.Context, db store.Querier, request *model.UserSearchTransactionRequest) ([]*entity.TransactionWithTotal, *web.PageMetadata, error)
+	FindManyWithDetailByUserID(ctx context.Context, db store.Querier, request *model.UserSearchTransactionRequest) ([]*entity.TransactionWithDetailAndTotal, *web.PageMetadata, error)
+	FindManyWithDetailByProductID(ctx context.Context, db store.Querier, request *model.OwnerSearchTransactionRequest) ([]*entity.TransactionWithDetailAndTotal, *web.PageMetadata, error)
 	UpdateCallback(ctx context.Context, db store.Querier, transaction *entity.Transaction) error
 	UpdateToken(ctx context.Context, tx store.Querier, transaction *entity.Transaction) error
 	UpdateStatus(ctx context.Context, tx store.Querier, transaction *entity.Transaction) error
@@ -108,9 +113,10 @@ func (r *transactionRepository) FindDetailByID(ctx context.Context, db store.Que
 		t.payment_at AS transaction_payment_at
 		t.updated_at AS transaction_updated_at
 		td.id AS transaction_detail_id
-		td.transaction_id AS transaction_detail_product_id
-		td.product_id AS transaction_detail_quantity
-		td.quantity AS transaction_detail_price
+		td.transaction_id AS transaction_detail_transaction_id
+		td.product_id AS transaction_detail_product_id
+		td.price AS transaction_detail_price
+		td.quantity AS transaction_detail_quantity
 		td.created_at AS transaction_detail_created_at
 	FROM 
 		transactions AS t
@@ -205,6 +211,162 @@ func (r *transactionRepository) FindManyCheckable(ctx context.Context, tx store.
 	}
 
 	return transactions, nil
+}
+
+func (r *transactionRepository) FindManyByUserID(ctx context.Context, db store.Querier, request *model.UserSearchTransactionRequest) ([]*entity.TransactionWithTotal, *web.PageMetadata, error) {
+	transactions := make([]*entity.TransactionWithTotal, 0)
+	query := `
+	SELECT 
+		id,
+		user_id,
+		total_price,
+		transaction_status,
+		internal_status,
+		external_status,
+		external_settlement_at,
+		external_callback_response,
+		snap_token,
+		checkout_at,
+		payment_at,
+		updated_at,
+		COUNT (*) OVER () as total
+	FROM 
+		transactions
+	WHERE 
+		user_id = $1
+	LIMIT $2 
+	OFFSET $3
+	
+	`
+	if err := pgxscan.Select(ctx, db, &transactions, query, request.UserID, request.Limit, (request.Page-1)*request.Limit); err != nil {
+		return nil, nil, err
+	}
+
+	if len(transactions) == 0 {
+		return nil, &web.PageMetadata{}, nil
+	}
+
+	totalItems := transactions[0].Total
+
+	pageMetadata := helper.CalculatePagination(int64(totalItems), request.Page, request.Limit)
+
+	return transactions, pageMetadata, nil
+
+}
+
+func (r *transactionRepository) FindManyWithDetailByUserID(
+	ctx context.Context,
+	db store.Querier,
+	request *model.UserSearchTransactionRequest,
+) ([]*entity.TransactionWithDetailAndTotal, *web.PageMetadata, error) {
+
+	// Langkah 1: Hitung total transaksi (bukan total baris hasil join)
+	var totalItems int
+	countQuery := `
+		SELECT COUNT(*)
+		FROM transactions
+		WHERE user_id = $1
+	`
+	if err := db.QueryRow(ctx, countQuery, request.UserID).Scan(&totalItems); err != nil {
+		return nil, nil, err
+	}
+
+	if totalItems == 0 {
+		return []*entity.TransactionWithDetailAndTotal{}, helper.CalculatePagination(0, request.Page, request.Limit), nil
+	}
+
+	query := `
+		SELECT
+			t.id AS transaction_id,
+			t.user_id AS transaction_user_id,
+			t.total_price AS transaction_total_price,
+			t.transaction_status AS transaction_transaction_status,
+			t.internal_status AS transaction_internal_status,
+			t.external_status AS transaction_external_status,
+			t.external_settlement_at AS transaction_external_settlement_at,
+			t.external_callback_response AS transaction_external_callback_response,
+			t.checkout_at AS transaction_checkout_at,
+			t.payment_at AS transaction_payment_at,
+			t.updated_at AS transaction_updated_at,
+			td.id AS transaction_detail_id,
+			td.transaction_id AS transaction_detail_transaction_id,
+			td.product_id AS transaction_detail_product_id,
+			td.quantity AS transaction_detail_quantity,
+			td.price AS transaction_detail_price,
+			td.created_at AS transaction_detail_created_at
+		FROM (
+			SELECT *
+			FROM transactions
+			WHERE user_id = $1
+			ORDER BY checkout_at DESC
+			LIMIT $2 OFFSET $3
+		) AS t
+	LEFT JOIN
+		transaction_details AS td
+	ON
+		t.id = td.transaction_id
+	ORDER BY t.checkout_at DESC, td.created_at ASC
+	`
+
+	transactions := make([]*entity.TransactionWithDetailAndTotal, 0)
+	if err := pgxscan.Select(ctx, db, &transactions, query, request.UserID, request.Limit, (request.Page-1)*request.Limit); err != nil {
+		return nil, nil, err
+	}
+
+	if len(transactions) == 0 {
+		return nil, &web.PageMetadata{}, nil
+	}
+
+	pageMetadata := helper.CalculatePagination(int64(totalItems), request.Page, request.Limit)
+
+	return transactions, pageMetadata, nil
+}
+
+func (r *transactionRepository) FindManyWithDetailByProductID(ctx context.Context, db store.Querier, request *model.OwnerSearchTransactionRequest) ([]*entity.TransactionWithDetailAndTotal, *web.PageMetadata, error) {
+	query := `
+		SELECT
+			COUNT(*) OVER() AS total,
+			t.id AS transaction_id,
+			t.user_id AS transaction_user_id,
+			t.total_price AS transaction_total_price,
+			t.transaction_status AS transaction_transaction_status,
+			t.internal_status AS transaction_internal_status,
+			t.external_status AS transaction_external_status,
+			t.external_settlement_at AS transaction_external_settlement_at,
+			t.external_callback_response AS transaction_external_callback_response,
+			t.checkout_at AS transaction_checkout_at,
+			t.payment_at AS transaction_payment_at,
+			t.updated_at AS transaction_updated_at,
+			td.id AS transaction_detail_id,
+			td.transaction_id AS transaction_detail_transaction_id,
+			td.product_id AS transaction_detail_product_id,
+			td.quantity AS transaction_detail_quantity,
+			td.price AS transaction_detail_price,
+			td.created_at AS transaction_detail_created_at
+		FROM transactions AS t
+	JOIN
+		transaction_details AS td
+	ON
+		t.id = td.transaction_id
+	WHERE 
+		td.product_id = $1
+	ORDER BY t.checkout_at DESC, td.created_at ASC
+	LIMIT $2 OFFSET $3
+	`
+
+	transactions := make([]*entity.TransactionWithDetailAndTotal, 0)
+	if err := pgxscan.Select(ctx, db, &transactions, query, request.ProductID, request.Limit, (request.Page-1)*request.Limit); err != nil {
+		return nil, nil, err
+	}
+
+	if len(transactions) == 0 {
+		return nil, &web.PageMetadata{}, nil
+	}
+
+	pageMetadata := helper.CalculatePagination(int64(transactions[0].Total), request.Page, request.Limit)
+
+	return transactions, pageMetadata, nil
+
 }
 
 // func (r *transactionRepository) DeleteByID(ctx context.Context, db store.Querier, id string) error {

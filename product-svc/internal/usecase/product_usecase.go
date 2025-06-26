@@ -28,6 +28,7 @@ type ProductUseCase interface {
 	OwnerDelete(ctx context.Context, request *model.DeleteProductRequest) error
 	OwnerSearch(ctx context.Context, request *model.OwnerSearchProductsRequest) ([]*model.ProductResponse, *web.PageMetadata, error)
 	OwnerUpdate(ctx context.Context, request *model.UpdateProductRequest) (*model.ProductResponse, error)
+	OwnerGet(ctx context.Context, request *model.OwnerGetProductRequest) (*model.ProductResponse, error)
 	PublicSearch(ctx context.Context, request *model.PublicSearchProductsRequest) ([]*model.ProductResponse, *web.PageMetadata, error)
 }
 
@@ -192,6 +193,17 @@ func (uc *productUseCase) OwnerSearch(ctx context.Context, request *model.OwnerS
 	}
 
 	return converter.ProductsWithTotalToResponses(products), metadata, nil
+}
+func (uc *productUseCase) OwnerGet(ctx context.Context, request *model.OwnerGetProductRequest) (*model.ProductResponse, error) {
+	uc.log.Info("Owner get accessde", zap.Any("request", request))
+	product, err := uc.productRepository.FindByIDAndUserID(ctx, uc.databaseStore, request.ProductID, request.UserID)
+	if err != nil {
+		if strings.Contains(err.Error(), pgx.ErrNoRows.Error()) {
+			return nil, helper.NewUseCaseError(errorcode.ErrResourceNotFound, message.ProductNotFound)
+		}
+		return nil, helper.WrapInternalServerError(uc.log, "failed to find owner products by user id", err)
+	}
+	return converter.ProductToResponse(product), nil
 }
 
 func (uc *productUseCase) PublicSearch(ctx context.Context, request *model.PublicSearchProductsRequest) ([]*model.ProductResponse, *web.PageMetadata, error) {

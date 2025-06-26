@@ -15,12 +15,15 @@ import (
 
 type ProductHandler struct {
 	productTranscationUC usecase.ProductTransactionUseCase
+	productUC            usecase.ProductUseCase
 	productpb.UnimplementedProductServiceServer
 }
 
-func NewProductHandler(server *grpc.Server, productTranscationUC usecase.ProductTransactionUseCase) {
+func NewProductHandler(server *grpc.Server, productTranscationUC usecase.ProductTransactionUseCase,
+	productUC usecase.ProductUseCase) {
 	handler := &ProductHandler{
 		productTranscationUC: productTranscationUC,
+		productUC:            productUC,
 	}
 	productpb.RegisterProductServiceServer(server, handler)
 }
@@ -79,4 +82,37 @@ func (h *ProductHandler) CheckProductAndReserve(ctx context.Context, pbReq *prod
 	}
 
 	return pbResponse, nil
+}
+
+func (h *ProductHandler) OwnerGetProduct(ctx context.Context, pbReq *productpb.OwnerGetProductRequest) (*productpb.OwnerGetProductResponse, error) {
+	parsedProductID, err := uuid.Parse(pbReq.GetProductId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "Invalid product ID format")
+	}
+
+	parsedUserID, err := uuid.Parse(pbReq.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "Invalid user ID format")
+	}
+
+	request := &model.OwnerGetProductRequest{
+		UserID:    parsedUserID,
+		ProductID: parsedProductID,
+	}
+
+	response, err := h.productUC.OwnerGet(ctx, request)
+	if err != nil {
+		return nil, helper.ErrGRPC(err)
+	}
+
+	return &productpb.OwnerGetProductResponse{
+		Status: int64(codes.OK),
+		Product: &productpb.Product{
+			Id:          response.ID,
+			Name:        response.Name,
+			Description: response.Description,
+			Price:       float32(response.Price),
+			Quantity:    int32(response.Quantity),
+		},
+	}, nil
 }
